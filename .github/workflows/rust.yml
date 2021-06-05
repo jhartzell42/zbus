@@ -29,6 +29,8 @@ jobs:
       run: |
          dbus-run-session --config-file  /tmp/dbus-session-abstract.conf -- cargo test --verbose -- --skip fdpass_systemd
          dbus-run-session --config-file /tmp/dbus-session.conf -- cargo test --verbose --all-features -- --skip fdpass_systemd
+         # Test external executor (currently only 1 test can handle it so only run that)
+         dbus-run-session --config-file /tmp/dbus-session.conf -- cargo test --verbose --package zbus --no-default-features fdo::tests::signal_stream
     - name: Check formatting
       run: cargo fmt -- --check
     - name: Catch common mistakes and unwrap calls

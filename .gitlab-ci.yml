@@ -83,6 +83,8 @@ check:
     # check cookie-sha1 auth against dbus-daemon
     - sed -i s/EXTERNAL/DBUS_COOKIE_SHA1/g /tmp/dbus-session.conf
     - dbus-run-session --config-file /tmp/dbus-session.conf -- cargo test --verbose -- basic_connection
+    # Test external executor (currently only 1 test can handle it so only run that)
+    - dbus-run-session --config-file /tmp/dbus-session.conf -- cargo test --verbose --package zbus --no-default-features fdo::tests::signal_stream
 
 test:
   extends: .debian_img
