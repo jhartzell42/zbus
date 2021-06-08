@@ -141,8 +141,8 @@ impl Connection {
     }
 
     /// The unique name as assigned by the message bus or `None` if not a message bus connection.
-    pub fn unique_name(&self) -> Option<&str> {
-        self.inner.unique_name()
+    pub fn unique_name(&self) -> Result<Option<&str>> {
+        block_on(self.inner.unique_name())
     }
 
     /// Fetch the next message from the connection.

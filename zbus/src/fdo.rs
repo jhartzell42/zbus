@@ -672,7 +672,7 @@ mod tests {
         let proxy = fdo::DBusProxy::new(&conn).unwrap();
 
         let well_known = "org.freedesktop.zbus.FdoSignalConnectTest";
-        let unique_name = conn.unique_name().unwrap().to_string();
+        let unique_name = conn.unique_name().unwrap().unwrap().to_string();
         {
             let signaled = owner_change_signaled.clone();
             proxy
@@ -757,7 +757,7 @@ mod tests {
         // Register a well-known name with the session bus and ensure we get the appropriate
         // signals called for that.
         let well_known = "org.freedesktop.zbus.FdoSignalStreamTest";
-        let unique_name = conn.unique_name().unwrap().to_string();
+        let unique_name = conn.unique_name().await.unwrap().unwrap().to_string();
         let owner_change_stream =
             proxy
                 .receive_name_owner_changed()

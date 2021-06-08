@@ -399,7 +399,7 @@ mod tests {
             .unwrap());
         assert_eq!(
             Some(reply.body::<&str>().unwrap()),
-            connection.unique_name()
+            connection.unique_name().unwrap(),
         );
 
         let reply = connection
@@ -500,7 +500,7 @@ mod tests {
             .unwrap());
         assert_eq!(
             Some(reply.body::<&str>().unwrap()),
-            connection.unique_name()
+            connection.unique_name().await.unwrap(),
         );
 
         let reply = connection
@@ -540,7 +540,7 @@ mod tests {
         let client_conn = Connection::new_session().unwrap();
         let msg = Message::method(
             None,
-            conn.unique_name(),
+            conn.unique_name().unwrap(),
             "/org/freedesktop/Issue68",
             Some("org.freedesktop.Issue68"),
             "Ping",
@@ -572,7 +572,7 @@ mod tests {
         use std::{cell::RefCell, convert::TryFrom, rc::Rc};
         use zvariant::{ObjectPath, Value};
         let conn = Connection::new_session().unwrap();
-        let service_name = conn.unique_name().unwrap().to_string();
+        let service_name = conn.unique_name().unwrap().unwrap().to_string();
         let mut object_server = super::ObjectServer::new(&conn);
 
         struct Secret(Rc<RefCell<bool>>);

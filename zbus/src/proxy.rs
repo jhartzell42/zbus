@@ -299,7 +299,7 @@ mod tests {
 
         let proxy = fdo::DBusProxy::new(&conn).unwrap();
         let well_known = "org.freedesktop.zbus.ProxySignalTest";
-        let unique_name = conn.unique_name().unwrap().to_string();
+        let unique_name = conn.unique_name().unwrap().unwrap().to_string();
         {
             let signaled = owner_change_signaled.clone();
             proxy

@@ -28,7 +28,7 @@ use std::{
 };
 use zvariant::ObjectPath;
 
-use futures_core::{stream, Future};
+use futures_core::{future::BoxFuture, stream, Future};
 use futures_util::{
     sink::SinkExt,
     stream::{select as stream_select, StreamExt},
@@ -434,7 +434,7 @@ impl Connection {
     {
         let stream = self.stream().await;
         let m = Message::method(
-            self.unique_name(),
+            self.unique_name().await?,
             destination,
             path,
             interface,
@@ -495,7 +495,7 @@ impl Connection {
         MessageError: From<E>,
     {
         let m = Message::signal(
-            self.unique_name(),
+            self.unique_name().await?,
             destination,
             path,
             interface,
@@ -516,7 +516,7 @@ impl Connection {
     where
         B: serde::ser::Serialize + zvariant::Type,
     {
-        let m = Message::method_reply(self.unique_name(), call, body)?;
+        let m = Message::method_reply(self.unique_name().await?, call, body)?;
         self.send_message(m).await
     }
 
@@ -530,7 +530,7 @@ impl Connection {
     where
         B: serde::ser::Serialize + zvariant::Type,
     {
-        let m = Message::method_error(self.unique_name(), call, error_name, body)?;
+        let m = Message::method_error(self.unique_name().await?, call, error_name, body)?;
         self.send_message(m).await
     }
 
@@ -555,8 +555,19 @@ impl Connection {
     }
 
     /// The unique name as assigned by the message bus or `None` if not a message bus connection.
-    pub fn unique_name(&self) -> Option<&str> {
-        self.0.unique_name.get().map(|s| s.as_str())
+    pub fn unique_name(&self) -> BoxFuture<'_, Result<Option<&str>>> {
+        Box::pin(async move {
+            match self.0.unique_name.get().map(|s| s.as_str()) {
+                Some(s) => Ok(Some(s)),
+                None if self.0.bus_conn => {
+                    // Now that the server has approved us, we must send the bus Hello, as per specs
+                    self.hello_bus().await?;
+
+                    Ok(self.0.unique_name.get().map(|s| s.as_str()))
+                }
+                None => Ok(None),
+            }
+        })
     }
 
     /// Max number of messages to queue.
@@ -731,35 +742,7 @@ impl Connection {
     }
 
     async fn hello_bus(&self) -> Result<()> {
-        let dbus_proxy = fdo::AsyncDBusProxy::new(self)?;
-        let future = dbus_proxy.hello();
-
-        #[cfg(feature = "internal-executor")]
-        let name = future.await?;
-
-        // With external executor, our executor is only run after the connection construction is
-        // completed and this method is (and must) run before that so we need to tick the executor
-        // ourselves in parallel to making the method call.
-        #[cfg(not(feature = "internal-executor"))]
-        let name = {
-            use futures_util::future::{select, Either};
-
-            let executor = self.0.executor.clone();
-            let ticking_future = async move {
-                // Keep running as long as this task/future is not cancelled.
-                loop {
-                    executor.tick().await;
-                }
-            };
-
-            futures_util::pin_mut!(future);
-            futures_util::pin_mut!(ticking_future);
-
-            match select(future, ticking_future).await {
-                Either::Left((res, _)) => res?,
-                Either::Right((_, _)) => unreachable!("ticking task future shouldn't finish"),
-            }
-        };
+        let name = fdo::AsyncDBusProxy::new(self)?.hello().await?;
 
         self.0
             .unique_name
@@ -819,9 +802,6 @@ impl Connection {
         if !bus_connection {
             return Ok(connection);
         }
-
-        // Now that the server has approved us, we must send the bus Hello, as per specs
-        connection.hello_bus().await?;
 
         Ok(connection)
     }

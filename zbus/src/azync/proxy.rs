@@ -619,7 +619,7 @@ mod tests {
         // Register a well-known name with the session bus and ensure we get the appropriate
         // signals called for that.
         let conn = Connection::new_session().await?;
-        let unique_name = conn.unique_name().unwrap();
+        let unique_name = conn.unique_name().await?.unwrap();
 
         let proxy = fdo::AsyncDBusProxy::new(&conn)?;
 
@@ -680,7 +680,7 @@ mod tests {
 
         let proxy = fdo::AsyncDBusProxy::new(&conn)?;
         let well_known = "org.freedesktop.zbus.async.ProxySignalConnectTest";
-        let unique_name = conn.unique_name().unwrap().to_string();
+        let unique_name = conn.unique_name().await?.unwrap().to_string();
         let name_owner_changed_id = {
             let signaled = owner_change_signaled.clone();
 
